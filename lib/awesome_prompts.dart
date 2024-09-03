@@ -31,21 +31,25 @@ class PromptStateNotifier extends Notifier<List<PromptModel>> {
     required String message,
     required Severity severity,
   }) {
-    state.add(
+    state = [
+      ...state,
       PromptModel(
         id: state.length,
         title: title,
         message: message,
         severity: severity,
       ),
-    );
+    ];
   }
 
   void removePrompt({required int id}) {
     if (state.isEmpty) {
       return;
     }
+
     state.removeAt(state.indexWhere((prompt) => prompt.id == id));
+
+    state = [...state];
   }
 }
 
@@ -94,6 +98,10 @@ class _AwesomePromptState extends ConsumerState<AwesomePrompt> {
                         message: prompts[index].message,
                         severity: prompts[index].severity,
                         onClose: () {
+                          if (prompts.isEmpty) {
+                            return;
+                          }
+
                           ref
                               .read(promptNotifierProvider.notifier)
                               .removePrompt(
