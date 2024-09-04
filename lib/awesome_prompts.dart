@@ -1,6 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+void showError(
+    {required String title, required String message, required WidgetRef ref}) {
+  ref.read(promptNotifierProvider.notifier).addPrompt(
+        title: title,
+        message: message,
+        severity: Severity.error,
+      );
+}
+
+void showInfo(
+    {required String title, required String message, required WidgetRef ref}) {
+  ref.read(promptNotifierProvider.notifier).addPrompt(
+        title: title,
+        message: message,
+        severity: Severity.info,
+      );
+}
+
+void showWarning(
+    {required String title, required String message, required WidgetRef ref}) {
+  ref.read(promptNotifierProvider.notifier).addPrompt(
+        title: title,
+        message: message,
+        severity: Severity.warning,
+      );
+}
+
+void showSuccess(
+    {required String title, required String message, required WidgetRef ref}) {
+  ref.read(promptNotifierProvider.notifier).addPrompt(
+        title: title,
+        message: message,
+        severity: Severity.good,
+      );
+}
+
 @visibleForTesting
 enum Severity { info, error, warning, good }
 
@@ -59,15 +95,6 @@ final promptNotifierProvider =
   PromptStateNotifier.new,
 );
 
-void showError(
-    {required String title, required String message, required WidgetRef ref}) {
-  ref.read(promptNotifierProvider.notifier).addPrompt(
-        title: title,
-        message: message,
-        severity: Severity.error,
-      );
-}
-
 ///Wrap your whole app with this so the prompts can show anywhere on your screen
 class AwesomePrompt extends ConsumerStatefulWidget {
   final Widget child;
@@ -122,7 +149,7 @@ class _AwesomePromptState extends ConsumerState<AwesomePrompt> {
 }
 
 @visibleForTesting
-class PromptCard extends StatelessWidget {
+class PromptCard extends StatefulWidget {
   final Severity severity;
   final String title;
   final String message;
@@ -139,6 +166,12 @@ class PromptCard extends StatelessWidget {
     this.severity = Severity.info,
   });
 
+  @override
+  State<PromptCard> createState() => _PromptCardState();
+}
+
+class _PromptCardState extends State<PromptCard>
+    with SingleTickerProviderStateMixin {
   final Color textColor = const Color(0xFF282828);
 
   Color bgColor({required Severity severity}) {
@@ -171,78 +204,117 @@ class PromptCard extends StatelessWidget {
     }
   }
 
+  late final AnimationController _animationController = AnimationController(
+    duration: const Duration(milliseconds: 500),
+    vsync: this,
+  );
+
+  late final Animation<Offset> _offsetAnimation = Tween<Offset>(
+    begin: const Offset(0.0, -1.5),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(
+    parent: _animationController,
+    curve: Curves.easeIn,
+  ));
+
+  late final Animation<double> _opacityAnimation = Tween<double>(
+    begin: 0.0,
+    end: 1.0,
+  ).animate(CurvedAnimation(
+    parent: _animationController,
+    curve: Curves.easeIn,
+  ));
+
+  @override
+  void initState() {
+    _animationController.forward();
+    super.initState();
+  }
+
+  @override
+  void dispose() async {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: MediaQuery.sizeOf(context).width,
-      child: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: 10.0,
-          vertical: 5.0,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(24.0),
-          decoration: BoxDecoration(
-            color: bgColor(severity: severity),
-            border: Border.all(
-              width: 1,
-              color: borderColor(severity: severity),
+    return SlideTransition(
+      position: _offsetAnimation,
+      child: FadeTransition(
+        opacity: _opacityAnimation,
+        child: SizedBox(
+          width: MediaQuery.sizeOf(context).width,
+          child: Container(
+            margin: const EdgeInsets.symmetric(
+              horizontal: 10.0,
+              vertical: 5.0,
             ),
-            borderRadius: BorderRadius.circular(16.0),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16.0),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(24.0),
+              decoration: BoxDecoration(
+                color: bgColor(severity: widget.severity),
+                border: Border.all(
+                  width: 1,
+                  color: borderColor(severity: widget.severity),
+                ),
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconContainer(
-                    icon: const Icon(Icons.info),
-                    severity: severity,
-                  ),
-                  const SizedBox(width: 10.0),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                  Row(
                     children: [
-                      Text(
-                        title,
-                        textAlign: TextAlign.start,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 16.0,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      IconContainer(
+                        icon: const Icon(Icons.info),
+                        severity: widget.severity,
                       ),
-                      const SizedBox(height: 10.0),
-                      SizedBox(
-                        width: MediaQuery.sizeOf(context).width * 0.4,
-                        child: Text(
-                          message,
-                          maxLines: 2,
-                          textAlign: TextAlign.start,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 11.0,
+                      const SizedBox(width: 10.0),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.title,
+                            textAlign: TextAlign.start,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 10.0),
+                          SizedBox(
+                            width: MediaQuery.sizeOf(context).width * 0.4,
+                            child: Text(
+                              widget.message,
+                              maxLines: 2,
+                              textAlign: TextAlign.start,
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 11.0,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () async {
+                      if (widget.onClose != null) {
+                        widget.onClose!();
+                      }
+                    },
+                  )
                 ],
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  if (onClose != null) {
-                    onClose!();
-                  }
-                },
-              )
-            ],
+            ),
           ),
         ),
       ),
